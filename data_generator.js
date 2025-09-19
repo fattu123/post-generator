@@ -11,9 +11,7 @@
 // @grant        none
 // ==/UserScript==
 
-// Denna fil innehåller nu endast de funktioner som genererar texten.
-// generateContent() och generateTitle() tar nu in en seed (siffra) som argument.
-// Hela skriptet är nu omskrivet för att vara en modul som kan anropas från classic.js
+
 
 function generateContent(seed)
 {
