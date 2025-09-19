@@ -1,20 +1,19 @@
 // ==UserScript==
 // @name         Classic title and paragraph v2
 // @namespace    http://tampermonkey.net/
-// @version      2025-09-17
-// @description  Automated post creation for WordPress Classic Editor
-// @author       Your Group
+// @version      2025-09-16
+// @description  try to take over the world!
+// @author       You
 // @match        http://cms.webug.se/grupp11/wordpress/wp-admin/post-new.php
 // @match        http://cms.webug.se/grupp11/wordpress/wp-admin/post.php*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=webug.se
 // @grant        none
-// @require      https://raw.githubusercontent.com/LenaSYS/ContextFreeLib/refs/heads/master/js/contextfreegrammar.js
-// @require      https://raw.githubusercontent.com/LenaSYS/Random-Number-Generator/refs/heads/master/seededrandom.js
-// @require      https://raw.githubusercontent.com/LenaSYS/ContextFreeLib/refs/heads/master/js/data_generator.js
 // ==/UserScript==
 
 (async function() {
     'use strict';
+
+    // Your code here...
 
     // --- LocalStorage-keys ---
     const LS_TARGET = '__bulk_target__';
@@ -25,6 +24,7 @@
     }
 
     function getLocalStorage(key) {
+        // 10 is to tell the browser its an integer
         return parseInt(localStorage.getItem(key), 10);
     }
 
@@ -32,95 +32,114 @@
         return new Promise(res => setTimeout(res, ms));
     }
 
-    function showPrompt() {
+    function addTitle(titleText) {
+        let title = document.getElementById("title");
+
+        if (title) {
+            // Add a title name
+            title.value = titleText;
+
+            let titlePromptText = document.getElementById("title-prompt-text");
+            if (titlePromptText) {
+                // Hide placeholder
+                titlePromptText.className = "screen-reader-text";
+            }
+
+            console.log("Title added");
+        }
+    }
+
+    function addParagraph(paragraphText) {
+        // Take iframe parent and take a second html tag to prevent run code inside the iframe
+        let iframe = document.getElementById("content_ifr");
+
+        if (iframe) {
+            let document = iframe.contentDocument || iframe.contentWindow.document;
+            let body = document.querySelector("body");
+
+            if (body) {
+                body.innerHTML = "<p>" + paragraphText + "</p>";
+                console.log("Paragraph added");
+            }
+        }
+    }
+
+    function publishPost() {
+        // Get a publish button
+        let publishButton = document.getElementById("publish");
+
+        if (publishButton) {
+            publishButton.click();
+        }
+
+        console.log("Post published");
+    }
+
+     function showPrompt() {
+        // Ask how many posts to create, if its missing
         if (!getLocalStorage(LS_TARGET)) {
+            console.log(getLocalStorage(LS_TARGET));
+            // default value = 5, 10 is to tell the browser its an integer
             const n = parseInt(prompt('How many posts do you want to create?', '5'), 10);
             if (!Number.isFinite(n) || n <= 0) {
                 return;
             }
+
             storeLocalStorage(LS_COUNT, 0);
             storeLocalStorage(LS_TARGET, n);
         }
     }
 
-    function addTitle(seed) {
-        const titleElement = document.getElementById("title");
-        if (titleElement) {
-            titleElement.value = generateTitle(seed);
-        }
-    }
-
-    function addParagraph(seed) {
-        const paragraphElement = document.getElementById("content");
-        if (paragraphElement) {
-            paragraphElement.value = generateContent(seed);
-        }
-    }
-
-    function publishPost() {
-        const publishButton = document.getElementById("publish");
-        if (publishButton) {
-            publishButton.click();
-        }
-    }
-
     async function createPost() {
         let currentPost = getLocalStorage(LS_COUNT);
-        const totalPosts = getLocalStorage(LS_TARGET);
 
-        console.log(`Progress: ${currentPost}/${totalPosts}`);
+        currentPost++;
+        storeLocalStorage(LS_COUNT, currentPost);
 
-        if (currentPost < totalPosts) {
-            currentPost++;
-            storeLocalStorage(LS_COUNT, currentPost);
+        let title = "Auto Title " + currentPost;
+        addTitle(title);
 
-            await delay(1000);
-            // Skicka in ett unikt seed-värde (currentPost)
-            addTitle(currentPost);
+        let paragraph = "Auto Paragraph " + currentPost;
+        addParagraph(paragraph);
 
-            await delay(1000);
-            // Skicka in ett unikt seed-värde (currentPost)
-            addParagraph(currentPost);
+        await delay(1000);
+        publishPost();
+    }
+
+    async function run() {
+        // Prevent double run script inside iframes
+        if (window.top !== window.self){
+            return;
+        }
+
+        const url = window.location.href;
+
+        // If a url is not a edit page then show prompt and create a post; otherwise close edit page tab
+        if (!url.includes("post.php") && !url.includes("action=edit")) {
+            console.log("On custom page");
+            showPrompt();
+            createPost();
+        } else {
+            console.log("On edit page");
+
+            let currentPost = getLocalStorage(LS_COUNT);
+            const totalPosts = getLocalStorage(LS_TARGET);
+
+            console.log(`Progress: ${currentPost}/${totalPosts}`);
 
             if (currentPost < totalPosts) {
-                await delay(1000);
+                // Open a new post tab and close a old post tab
                 window.open('http://cms.webug.se/grupp11/wordpress/wp-admin/post-new.php');
+                window.close();
+            } else {
+                console.log("All posts done!");
+                alert("All posts done!");
+                localStorage.removeItem(LS_TARGET);
+                localStorage.removeItem(LS_COUNT);
             }
-
-            await delay(2000);
-            publishPost();
-        } else {
-            console.log("All posts done!");
-            localStorage.removeItem(LS_TARGET);
-            localStorage.removeItem(LS_COUNT);
         }
     }
 
-    if (window.top !== window.self) {
-        return;
-    }
-
-    const url = window.location.href;
-    if (!url.includes("post.php") && !url.includes("action=edit")) {
-        console.log("On custom page");
-        showPrompt();
-        createPost();
-    } else {
-        console.log("On edit page");
-        let currentPost = getLocalStorage(LS_COUNT);
-        const totalPosts = getLocalStorage(LS_TARGET);
-
-        console.log(`Progress: ${currentPost}/${totalPosts}`);
-
-        if (currentPost < totalPosts) {
-            window.open('http://cms.webug.se/grupp11/wordpress/wp-admin/post-new.php');
-            window.close();
-        } else {
-            console.log("All posts done!");
-            alert("All posts done!");
-            localStorage.removeItem(LS_TARGET);
-            localStorage.removeItem(LS_COUNT);
-        }
-    }
-
+    await delay(1000);
+    run();
 })();
